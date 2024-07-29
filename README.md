@@ -9,3 +9,5 @@ In intorch.py I have implemented the same neural network, but using softmax and 
 
 ## Window
 In window.py I have made a window in pygame, through which the user can input their own handdrawn numbers. It uses the model seen in main.py and works by starting the program.
+
+![UI](https://github.com/Grabowskiy/ML-based-number-recognizer/blob/master/window.png)
