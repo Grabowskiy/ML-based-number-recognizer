@@ -2,8 +2,7 @@ import pygame
 import numpy as np
 import random
 import sys
-
-#If you want to use numpy based model:
+#Using numpy based model
 from main import neur
 
 
