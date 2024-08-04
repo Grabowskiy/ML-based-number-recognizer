@@ -149,10 +149,10 @@ nr_correct = 0
 loss_list = []
 acc_list = []
 
+print("Starting the learning")
 
 #Going through the data epoch times
 for epoch in range(epochs):
-    print("Starting the learning")
     nr_correct = 0
     total_samples = 0
     #Going through the mini-batches

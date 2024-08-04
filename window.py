@@ -6,9 +6,13 @@ import sys
 from main import neur
 
 
+#Screen
+HEIGHT = 385
+WIDTH = 700
+
 #Global variables for grid and pixel management
 CELL_SIZE = 12
-GRID_SPACE = 1
+GRID_SPACE = 0
 
 #Colors
 BLACK = (0, 0, 0)
@@ -16,44 +20,43 @@ WHITE = (255, 255, 255)
 OFF_WHITE = (245, 245, 245)
 GRAY = (200, 200, 200)
 
-#TODO Shading around a pixel for more realistic numbers
+#Font
+font_path = "data/ProductSans-Regular.ttf"
+
 class Pixel():
     def __init__(self, id):
         self.id = id
-        self.value = 0
-        self.connections = 0
+        self.value = 0.0
 
-    def clicked(self, data, i, j):
-        self.value = random.uniform(0.95, 1.0).double()
-        check_connections(data, i, j)
+    def clicked(self, data, grid, grid_x, grid_y):
+        self.value = random.uniform(0.90, 1.0)
+        grid[grid_y][grid_x] = BLACK
 
-    #Not in use yet: will be for shading the surrounding pixels
-    def check_connections(self):
-        if i > 0 and i < 27: a = True
-        if j > 0 and j < 27: b = True
-        # Chech lower, upper connection
-        if a:
-            if data[i-1][j].value > 0:
-                self.connections += 1
-            if data[i+1][j].value > 0:
-                self.connections += 1
-        # Check side connection
-        if b:
-            if data[i][j-1].value > 0:
-                self.connections += 1
-            if data[i][j+1].value > 0:
-                self.connections += 1
-        #Check diagonal connection
-        if a and b:
-            if data[i-1][j - 1].value > 0:
-                self.connections += 1
-            if data[i-1][j + 1].value > 0:
-                self.connections += 1
-            if data[i+1][j - 1].value > 0:
-                self.connections += 1
-            if data[i+1][j + 1].value > 0:
-                self.connections += 1
-        return self.connections
+        for i in range(grid_y-1, grid_y+2):
+            for j in range(grid_x-1, grid_x+2):
+                try:
+                    pixel_id = i * 28 + j
+                    pixel = data[0][pixel_id]
+                except IndexError:
+                    continue
+
+                if pixel.value == 0.0:
+                    pixel.value = random.uniform(0.4, 0.6)
+                if i != grid_y or j != grid_x:
+                    self.add_color_to_neighbour(pixel, grid, pixel_id)
+
+    def add_color_to_neighbour(self, pixel, grid, pixel_id):
+        #So the sides don't spill to the other side
+        if pixel.value > 0.89 or pixel_id % 28 == 0 or pixel_id % 28 == 27 \
+                and self.id - 28 != pixel_id and self.id + 28 != pixel_id:
+            return
+
+        graycolor_value = GRAY[0] * pixel.value
+        color = graycolor_value, graycolor_value, graycolor_value
+        row = int(pixel_id / 28)
+        column = int(pixel_id % 28)
+        grid[row][column] = color
+
 
 def create_data():
     #Create the numpy array
@@ -72,7 +75,7 @@ def draw_grid(screen, grid):
             pygame.draw.rect(screen, grid[row][column], rect)
 
 def draw_button(screen, position: tuple, height, title, t_size):
-    font = pygame.font.Font(None, t_size)
+    font = pygame.font.Font(font_path, t_size)
     rect = pygame.Rect(position[0], position[1], 200, height)
     pygame.draw.rect(screen, OFF_WHITE, rect, border_radius=10)
     title_surface = font.render(title, True, BLACK)
@@ -89,9 +92,14 @@ def consol():
     grid = [[WHITE for _ in range(28)] for _ in range(28)]
     #Initialise pygame
     pygame.init()
-    screen = pygame.display.set_mode((700, 385))
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption('ML number recognition')
     clock = pygame.time.Clock()
+
+    text_size = 24
+    text_font = pygame.font.Font(font_path, text_size)
+    text = "Draw a number from 0 to 9"
+    text_surface = text_font.render(text, True, WHITE)
 
     #Running loop
     running = True
@@ -99,6 +107,9 @@ def consol():
         draw_grid(screen, grid)
         go_button = draw_button(screen, (440, 30),50, 'GO', 36)
         clear_button = draw_button(screen, (440, 285), 50, 'CLEAR', 36)
+
+        text_rect = text_surface.get_rect(center=(CELL_SIZE * 14, CELL_SIZE * 28 + (HEIGHT - CELL_SIZE * 28) / 2))
+        screen.blit(text_surface, text_rect)
 
         #Event handlings
         for event in pygame.event.get():
@@ -136,12 +147,9 @@ def consol():
                         CELL_SIZE,
                         CELL_SIZE
                     )
-                    grid[grid_y][grid_x] = BLACK
-
                     pixel_id = grid_y * 28 + grid_x
-                    data[0][pixel_id].value = random.uniform(0.8500, 0.99999)
-                    #TODO jelenleg egy tuple ként adja ki melyik grid re nyomtál rá, ebből ki lehet szedni melyik pixelnek
-                    # kell feketének lennie és át lehet nyomni a value ját, ezt a colort kell valahogy átadni a rajzolásnak
+                    pixel = data[0][pixel_id]
+                    pixel.clicked(data, grid, grid_x, grid_y)
 
         pygame.display.flip()
     pygame.quit()
