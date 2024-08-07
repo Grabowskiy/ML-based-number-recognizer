@@ -3,6 +3,13 @@ from data import get_mnist
 import numpy as np
 import matplotlib.pyplot as plt
 
+
+# Defining variables
+EPOCHS = 15
+BATCH_SIZE = 16
+LEARNING_RATE = 0.01
+
+
 #Sigmoid functions for the output layer
 #TODO Implementing the softmax function and its derivative
 def sigmoid(z):
@@ -106,7 +113,7 @@ class NeuralNetwork():
     #For calculating the accuracy of the model, at the end or for epochs
     def accuracy(self, correct, total_samples, epoch = 0, in_training = False):
         accuracy = (correct / total_samples) * 100
-        if in_training: print(f"Epoch {epoch + 1}/{epochs} - Acc: {round(accuracy, 2)}%")
+        if in_training: print(f"Epoch {epoch + 1}/{EPOCHS} - Acc: {round(accuracy, 2)}%")
         return accuracy
 
 #Plotting the data
@@ -126,80 +133,78 @@ def batch_loader(X, y, batch_size):
         begin, end = i, min(i + batch_size, n_samples)
         yield X[begin:end], y[begin: end]
 
-#Object Instantiation
-neur = NeuralNetwork(784, 256, 128,10)
 
-#Reading in the data
-images, labels = get_mnist()
+def main() -> NeuralNetwork:
+    #Object Instantiation
+    neur = NeuralNetwork(784, 256, 128,10)
 
-#Splitting the data into training and testing sets
-split_by = 0.8
-split_number = int(split_by * images.shape[0])
-X_train = images[:split_number]
-y_train = labels[:split_number]
-X_test = images[split_number:]
-y_test = labels[split_number:]
+    #Reading in the data
+    images, labels = get_mnist()
 
-#Defining variables
-epochs = 15
-batch_size = 16
-learning_rate = 0.01
-#index = 0
-nr_correct = 0
-loss_list = []
-acc_list = []
+    #Splitting the data into training and testing sets
+    split_by = 0.8
+    split_number = int(split_by * images.shape[0])
+    X_train = images[:split_number]
+    y_train = labels[:split_number]
+    X_test = images[split_number:]
+    y_test = labels[split_number:]
 
-print("Starting the learning")
-
-#Going through the data epoch times
-for epoch in range(epochs):
+    #index = 0
     nr_correct = 0
-    total_samples = 0
-    #Going through the mini-batches
-    for x_batch, y_batch in batch_loader(X_train, y_train, batch_size):
-        #Forvard pass
-        pred = neur.forvard(x_batch)
+    loss_list = []
+    acc_list = []
 
-        #Backward pass and loss calculation, adding it to list for visualization
-        loss = neur.backward(x_batch, y_batch)
-        loss_list.append(loss)
+    print("Starting the learning")
 
-        #Adding the correct predictions
-        nr_correct += np.sum(np.argmax(pred, axis=1) == np.argmax(y_batch, axis=1))
+    #Going through the data epoch times
+    for epoch in range(EPOCHS):
+        nr_correct = 0
+        total_samples = 0
+        #Going through the mini-batches
+        for x_batch, y_batch in batch_loader(X_train, y_train, BATCH_SIZE):
+            #Forvard pass
+            pred = neur.forvard(x_batch)
 
-        #For calculating accuracy
-        total_samples += x_batch.shape[0]
+            #Backward pass and loss calculation, adding it to list for visualization
+            loss = neur.backward(x_batch, y_batch)
+            loss_list.append(loss)
 
-        #Printing out the loss after number of iteration for manual evaluation
-        #index += 1
-        #if index == 1000:
-        #    print(f'Epoch: {epoch+1}/{epochs}, Loss: {loss}')
-        #    index = 0
-    acc_list.append(neur.accuracy(nr_correct, total_samples, epoch, True))
+            #Adding the correct predictions
+            nr_correct += np.sum(np.argmax(pred, axis=1) == np.argmax(y_batch, axis=1))
 
-print("Learning finished")
+            #For calculating accuracy
+            total_samples += x_batch.shape[0]
 
-test_correct = 0
-len_test = int(X_test.shape[0])
-#Evaluating the models performance on the test data
-for img, label in zip(X_test, y_test):
-    np.reshape(img, (1, 784))
-    np.reshape(label, (1, 10))
+            #Printing out the loss after number of iteration for manual evaluation
+            #index += 1
+            #if index == 1000:
+            #    print(f'Epoch: {epoch+1}/{epochs}, Loss: {loss}')
+            #    index = 0
+        acc_list.append(neur.accuracy(nr_correct, total_samples, epoch, True))
 
-    pred = neur.forvard(img)
-    if np.argmax(pred) == np.argmax(label):
-        test_correct += 1
-test_acc = neur.accuracy(test_correct, len_test)
-print(f'Final accuracy of the model on the testing data (batch size:{batch_size}, learning rate:{learning_rate}) '
-      f': {test_acc}')
-'''
-#Plottint the loss and the accuracy data throughout the learning
-plot(loss_list, 'Loss','Loss over Epochs', 'Epoch', 'Loss', 'red')
-plot(acc_list, 'Accuracy', 'Accuracy over Epochs','Epoch', 'Accuracy', 'blue' )
+    print("Learning finished")
 
-#Writing weight and biases to a file
-with open("filename", 'w') as file:
-    print(f"Az elso layer weightek: {neur.weight_input_h1}\nAz elso layer bias: {neur.bias_hidden1}\n\n"
-          f"Az masodik layer weightek: {neur.weight_h1_h2}\nAz masodik layer bias: {neur.bias_hidden2}\n\n"
-          f"Az harmadik layer weightek: {neur.weight_h2_out}\nAz harmadik layer bias: {neur.bias_out}\n\n", file=file)
-'''
+    test_correct = 0
+    len_test = int(X_test.shape[0])
+    #Evaluating the models performance on the test data
+    for img, label in zip(X_test, y_test):
+        np.reshape(img, (1, 784))
+        np.reshape(label, (1, 10))
+
+        pred = neur.forvard(img)
+        if np.argmax(pred) == np.argmax(label):
+            test_correct += 1
+    test_acc = neur.accuracy(test_correct, len_test)
+    print(f'Final accuracy of the model on the testing data (batch size:{BATCH_SIZE}, learning rate:{LEARNING_RATE}) '
+          f': {test_acc}')
+
+    return neur
+
+    '''
+    #Plottint the loss and the accuracy data throughout the learning
+    plot(loss_list, 'Loss','Loss over Epochs', 'Epoch', 'Loss', 'red')
+    plot(acc_list, 'Accuracy', 'Accuracy over Epochs','Epoch', 'Accuracy', 'blue' )
+    '''
+
+if __name__ == "__main__":
+    main()

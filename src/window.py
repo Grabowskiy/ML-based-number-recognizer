@@ -1,9 +1,10 @@
+import main
 import pygame
 import numpy as np
 import random
 import sys
 #Using numpy based model
-from main import neur
+import main
 
 
 #Screen
@@ -84,7 +85,7 @@ def draw_button(screen, position: tuple, height, title, t_size):
     return rect
 
 #Main window
-def consol():
+def consol(neur: main.NeuralNetwork):
     mouse_down = False
     #Make the pixels
     data = create_data()
@@ -155,5 +156,9 @@ def consol():
     pygame.quit()
     sys.exit()
 
-#Starting the consol
-consol()
+if __name__ == "__main__":
+    #Start learning
+    neur = main.main()
+
+    #Starting the consol
+    consol(neur)
