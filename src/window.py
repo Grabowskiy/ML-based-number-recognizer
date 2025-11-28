@@ -1,9 +1,10 @@
-import main
 import pygame
 import numpy as np
 import random
 import sys
-#Using numpy based model
+import torch
+
+import intorch
 import main
 
 
@@ -22,7 +23,7 @@ OFF_WHITE = (245, 245, 245)
 GRAY = (200, 200, 200)
 
 #Font
-font_path = "data/ProductSans-Regular.ttf"
+font_path = "..\data\ProductSans-Regular.ttf"
 
 class Pixel():
     def __init__(self, id):
@@ -85,7 +86,7 @@ def draw_button(screen, position: tuple, height, title, t_size):
     return rect
 
 #Main window
-def consol(neur: main.NeuralNetwork):
+def consol(model, is_torch=False):
     mouse_down = False
     #Make the pixels
     data = create_data()
@@ -121,12 +122,17 @@ def consol(neur: main.NeuralNetwork):
                 mouse_x, mouse_y = event.pos
                 #'GO' button
                 if go_button.collidepoint(mouse_x, mouse_y):
-                    data_values = [data[0][x].value for x in range(784)]
+                    data_values = np.array([data[0][x].value for x in range(784)])
                     no_input = all(value == 0 for value in data_values)
                     if not no_input:
-                        data_values = np.reshape(np.array(data_values), (1, 784))
-                        prediction = neur.forvard(data_values)
-                        prediction = np.argmax(prediction)
+                        if is_torch:
+                            image = torch.from_numpy(np.array(data_values)).float().view(1, 1, 28, 28).to(intorch.device)
+                            prediction = model.forward(image)
+                            prediction = np.argmax(prediction.cpu().detach().numpy())
+                        else:
+                            image = np.reshape(data_values, (1, 784))
+                            prediction = model.forward(image)
+                            prediction = np.argmax(prediction)
                         answer = draw_button(screen, (440, 120),100,f"{prediction}", 56)
                 #'CLEAR' button
                 if clear_button.collidepoint(mouse_x, mouse_y):
@@ -157,8 +163,16 @@ def consol(neur: main.NeuralNetwork):
     sys.exit()
 
 if __name__ == "__main__":
-    #Start learning
-    neur = main.main()
+    valasz = input("Melyik modellt szeretnéd használni: numpy (n) vagy pytorch (p) alapút?")
+    if valasz == 'n':
+        print("Numpy alapú modell tanítása.")
+        model = main.main()
+        consol(model, False)
+    elif valasz == 'p':
+        print("Pytorch alapú modell megnyitása.")
+        model = intorch.load_model()
+        consol(model, True)
+    else:
+        print("Nincs ilyen modell.")
+        quit()
 
-    #Starting the consol
-    consol(neur)

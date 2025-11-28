@@ -3,15 +3,12 @@ from data import get_mnist
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 # Defining variables
-EPOCHS = 15
+EPOCHS = 20
 BATCH_SIZE = 16
 LEARNING_RATE = 0.01
 
-
 #Sigmoid functions for the output layer
-#TODO Implementing the softmax function and its derivative
 def sigmoid(z):
     return 1 / (1 + np.exp(-z))
 
@@ -44,29 +41,24 @@ class NeuralNetwork():
         self.weight_h2_out = np.random.rand(hidden2_size, output_size) - 0.5
         self.bias_out = np.random.rand(output_size) - 0.5
 
-
     def softmax(self, z):
-        #normalising the data
-        z = np.exp(z)
-        for index, d in enumerate(z):
-            d_new = d - np.max(d)
-            z[index] = d_new
-        #sum = np.sum(np.exp(z - np.max(z)))
-        #return np.exp(z - np.max(z)) / sum
-        return z / np.sum(z)
+        shift_z = z - np.max(z, axis=1, keepdims=True)
+        exp_z = np.exp(shift_z)
+        return exp_z / np.sum(exp_z, axis=1, keepdims=True)
 
     def cross_entropy_loss(self, y_pred, y_true):
-        y_pred = self.softmax(y_pred)
-        loss = 0
-        for i in range(len(y_pred)):
-            loss += (-1 * y_true[i] * np.log(y_pred[i]))
+        m = y_true.shape[0]
+        epsilon = 1e-15 # log(0) elkerülése
+        y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
+
+        loss = -np.sum(y_true * np.log(y_pred)) / m
         return loss
 
     def d_cross_entropy_loss(self, y_pred, y_true):
         return y_pred - y_true
 
-    #Forvard propagation function
-    def forvard(self, x):
+    #Forward propagation function
+    def forward(self, x):
         self.in_h1 = np.dot(x, self.weight_input_h1) + self.bias_hidden1
 
         self.h1_h2_in = ReLU(self.in_h1)
@@ -75,11 +67,13 @@ class NeuralNetwork():
         self.h2_out_in = ReLU(self.h1_h2)
         self.h2_out = np.dot(self.h2_out_in, self.weight_h2_out) + self.bias_out
 
-        self.output = sigmoid(self.h2_out)
+        self.output = self.softmax(self.h2_out)
         return self.output
 
     #Backward propagation function
     def backward(self, x, y, learning_rate = 0.01):
+        #Implemetation for MSE  and sigmoid
+        '''
         #Calculating loss and it's derivative
         loss = MSE(self.output, y)
         d_loss = d_MSE(self.output, y)
@@ -99,6 +93,24 @@ class NeuralNetwork():
         hidden1_gradient = np.dot(hidden2_gradient, self.weight_h1_h2.T) * d_ReLU(self.in_h1)
         weight_input_to_hidden1_gradient = np.dot(x.T, hidden1_gradient)
         bias_hidden1_gradient = np.sum(hidden1_gradient)
+        '''
+
+        # Implemetation for
+        batch_size = x.shape[0]
+
+        loss = self.cross_entropy_loss(self.output, y)
+
+        output_gradient = (self.output - y) / batch_size
+        weight_hidden2_to_output_gradient = np.dot(self.h2_out_in.T, output_gradient)
+        bias_output_gradient = np.sum(output_gradient, axis=0)
+
+        hidden2_gradient = np.dot(output_gradient, self.weight_h2_out.T) * d_ReLU(self.h1_h2)
+        weight_hidden1_to_hidden2_gradient = np.dot(self.h1_h2_in.T, hidden2_gradient)
+        bias_hidden2_gradient = np.sum(hidden2_gradient, axis=0)
+
+        hidden1_gradient = np.dot(hidden2_gradient, self.weight_h1_h2.T) * d_ReLU(self.in_h1)
+        weight_input_to_hidden1_gradient = np.dot(x.T, hidden1_gradient)
+        bias_hidden1_gradient = np.sum(hidden1_gradient, axis=0)
 
         #Updating the weights (gradient descent)
         self.weight_h2_out += - learning_rate * weight_hidden2_to_output_gradient
@@ -111,20 +123,11 @@ class NeuralNetwork():
         return loss
 
     #For calculating the accuracy of the model, at the end or for epochs
-    def accuracy(self, correct, total_samples, epoch = 0, in_training = False):
+    def evaluate(self, correct, total_samples, train_loss, batch_number, epoch = 0):
         accuracy = (correct / total_samples) * 100
-        if in_training: print(f"Epoch {epoch + 1}/{EPOCHS} - Acc: {round(accuracy, 2)}%")
-        return accuracy
-
-#Plotting the data
-def plot(list, list_label, title, xlabel, ylabel, color):
-    plt.figure()
-    plt.plot(list, label=list_label, color=color)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.title(title)
-    plt.legend(loc='upper left', fontsize='medium', frameon=True)
-    plt.show()
+        loss = train_loss / batch_number
+        print(f"Epoch {epoch + 1}/{EPOCHS} - Acc: {round(accuracy, 2)}%, Loss: {round(loss, 5)}")
+        return accuracy, loss
 
 #Loading the mini batches for learning
 def batch_loader(X, y, batch_size):
@@ -133,10 +136,38 @@ def batch_loader(X, y, batch_size):
         begin, end = i, min(i + batch_size, n_samples)
         yield X[begin:end], y[begin: end]
 
+def plot_performance(train_acc, test_acc, train_loss, test_loss):
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+    x_axis = np.arange(len(train_loss))+1
+    # Plot Accuracy
+    ax1.plot(x_axis, train_acc, label='Train Accuracy', color='blue')
+    ax1.plot(x_axis, test_acc, label='Test Accuracy', color='orange')
+    max_acc_val = max(test_acc)
+    max_acc_idx = test_acc.index(max_acc_val)
+    ax1.plot(max_acc_idx, max_acc_val, 'r.', markersize=12, label='Max Test Acc')
+    ax1.set_xlabel('Epoch')
+    ax1.set_ylabel('Accuracy (%)')
+    ax1.legend()
+    ax1.grid(True)
+
+    # Plot Loss
+    ax2.plot(x_axis, train_loss, label='Train Loss', color='blue')
+    ax2.plot(x_axis, test_loss, label='Test Loss', color='orange')
+    min_loss_val = min(test_loss)
+    min_loss_idx = test_loss.index(min_loss_val)
+    ax2.plot(min_loss_idx, min_loss_val, 'r.', markersize=12, label='Min Test Loss')
+    ax2.set_xlabel('Epoch')
+    ax2.set_ylabel('Loss')
+    ax2.legend()
+    ax2.grid(True)
+
+    plt.tight_layout()
+    plt.savefig("figures/100_epochs.pdf", format='pdf', bbox_inches='tight')
+    plt.show()
 
 def main() -> NeuralNetwork:
     #Object Instantiation
-    neur = NeuralNetwork(784, 256, 128,10)
+    neur = NeuralNetwork(784, 128, 64,10)
 
     #Reading in the data
     images, labels = get_mnist()
@@ -145,66 +176,64 @@ def main() -> NeuralNetwork:
     split_by = 0.8
     split_number = int(split_by * images.shape[0])
     X_train = images[:split_number]
-    y_train = labels[:split_number]
+    Y_train = labels[:split_number]
     X_test = images[split_number:]
-    y_test = labels[split_number:]
+    Y_test = labels[split_number:]
 
     #index = 0
     nr_correct = 0
-    loss_list = []
-    acc_list = []
+    train_loss_list = []
+    train_acc_list = []
+    test_loss_list = []
+    test_acc_list = []
 
     print("Starting the learning")
 
     #Going through the data epoch times
     for epoch in range(EPOCHS):
-        nr_correct = 0
         total_samples = 0
+        train_correct = 0
+        train_loss = 0
+        batch_number = 0
+
+        # --- TRAIN ---
+        print("\nTrain")
         #Going through the mini-batches
-        for x_batch, y_batch in batch_loader(X_train, y_train, BATCH_SIZE):
-            #Forvard pass
-            pred = neur.forvard(x_batch)
+        for x_batch, y_batch in batch_loader(X_train, Y_train, BATCH_SIZE):
+            #Forward pass
+            pred = neur.forward(x_batch)
 
             #Backward pass and loss calculation, adding it to list for visualization
             loss = neur.backward(x_batch, y_batch)
-            loss_list.append(loss)
 
             #Adding the correct predictions
-            nr_correct += np.sum(np.argmax(pred, axis=1) == np.argmax(y_batch, axis=1))
+            train_loss += loss
+            train_correct += np.sum(np.argmax(pred, axis=1) == np.argmax(y_batch, axis=1))
 
             #For calculating accuracy
             total_samples += x_batch.shape[0]
+            batch_number += 1
 
-            #Printing out the loss after number of iteration for manual evaluation
-            #index += 1
-            #if index == 1000:
-            #    print(f'Epoch: {epoch+1}/{epochs}, Loss: {loss}')
-            #    index = 0
-        acc_list.append(neur.accuracy(nr_correct, total_samples, epoch, True))
+        avg_tran_acc, avg_train_loss = neur.evaluate(train_correct, total_samples, train_loss, batch_number, epoch)
+        train_acc_list.append(avg_tran_acc)
+        train_loss_list.append(avg_train_loss)
 
-    print("Learning finished")
+        # --- TEST ---
+        print("Test")
+        pred = neur.forward(X_test)
 
-    test_correct = 0
-    len_test = int(X_test.shape[0])
-    #Evaluating the models performance on the test data
-    for img, label in zip(X_test, y_test):
-        np.reshape(img, (1, 784))
-        np.reshape(label, (1, 10))
+        test_loss = neur.cross_entropy_loss(pred, Y_test)
+        test_correct = np.sum(np.argmax(pred, axis=1) == np.argmax(Y_test, axis=1))
+        test_samples = int(X_test.shape[0])
 
-        pred = neur.forvard(img)
-        if np.argmax(pred) == np.argmax(label):
-            test_correct += 1
-    test_acc = neur.accuracy(test_correct, len_test)
-    print(f'Final accuracy of the model on the testing data (batch size:{BATCH_SIZE}, learning rate:{LEARNING_RATE}) '
-          f': {test_acc}')
+        avg_test_acc, avg_test_loss = neur.evaluate(test_correct, test_samples, test_loss, 1, epoch)
+        test_acc_list.append(avg_test_acc)
+        test_loss_list.append(test_loss)
+
+    plot_performance(train_acc_list, test_acc_list, train_loss_list, test_loss_list)
 
     return neur
 
-    '''
-    #Plottint the loss and the accuracy data throughout the learning
-    plot(loss_list, 'Loss','Loss over Epochs', 'Epoch', 'Loss', 'red')
-    plot(acc_list, 'Accuracy', 'Accuracy over Epochs','Epoch', 'Accuracy', 'blue' )
-    '''
 
 if __name__ == "__main__":
     main()
