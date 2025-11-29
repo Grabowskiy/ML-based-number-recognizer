@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Defining variables
-EPOCHS = 20
+EPOCHS = 100
 BATCH_SIZE = 16
 LEARNING_RATE = 0.01
 
@@ -33,7 +33,7 @@ def d_MSE(predictions, targets):
 class NeuralNetwork():
     def __init__(self, input_size, hidden1_size, hidden2_size, output_size):
         self.weight_input_h1 = np.random.rand(input_size, hidden1_size) - 0.5
-        self.bias_hidden1 = np.random.rand(hidden1_size) - 0.5
+        self.biasq_hidden1 = np.random.rand(hidden1_size) - 0.5
 
         self.weight_h1_h2 = np.random.rand(hidden1_size, hidden2_size) - 0.5
         self.bias_hidden2 = np.random.rand(hidden2_size) - 0.5
@@ -137,22 +137,36 @@ def batch_loader(X, y, batch_size):
         yield X[begin:end], y[begin: end]
 
 def plot_performance(train_acc, test_acc, train_loss, test_loss):
+    plt.rcParams.update({
+        "text.usetex": True,
+        "font.family": "serif",
+        "font.serif": ["Computer Modern Roman"],
+        "font.size": 20,  # Base font
+        "axes.titlesize": 24,  # Title
+        "axes.labelsize": 22,  # Axis labels
+        "xtick.labelsize": 18,
+        "ytick.labelsize": 18,
+        "legend.fontsize": 18,
+        "figure.figsize": (8.3 * 0.8, 11.7 * 0.8 / 1.4),  # A4 width × scaled height
+        "figure.dpi": 300
+    })
+
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
     x_axis = np.arange(len(train_loss))+1
     # Plot Accuracy
-    ax1.plot(x_axis, train_acc, label='Train Accuracy', color='blue')
-    ax1.plot(x_axis, test_acc, label='Test Accuracy', color='orange')
+    ax1.plot(x_axis, train_acc, linewidth=2, label='Train Accuracy', color='blue')
+    ax1.plot(x_axis, test_acc, linewidth=2, label='Test Accuracy', color='orange')
     max_acc_val = max(test_acc)
     max_acc_idx = test_acc.index(max_acc_val)
     ax1.plot(max_acc_idx, max_acc_val, 'r.', markersize=12, label='Max Test Acc')
     ax1.set_xlabel('Epoch')
-    ax1.set_ylabel('Accuracy (%)')
+    ax1.set_ylabel('Accuracy [$\%$]')
     ax1.legend()
     ax1.grid(True)
 
     # Plot Loss
-    ax2.plot(x_axis, train_loss, label='Train Loss', color='blue')
-    ax2.plot(x_axis, test_loss, label='Test Loss', color='orange')
+    ax2.plot(x_axis, train_loss, linewidth=2, label='Train Loss', color='blue')
+    ax2.plot(x_axis, test_loss, linewidth=2, label='Test Loss', color='orange')
     min_loss_val = min(test_loss)
     min_loss_idx = test_loss.index(min_loss_val)
     ax2.plot(min_loss_idx, min_loss_val, 'r.', markersize=12, label='Min Test Loss')
