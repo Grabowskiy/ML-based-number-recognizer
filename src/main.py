@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Defining variables
-EPOCHS = 100
+EPOCHS = 20
 BATCH_SIZE = 16
 LEARNING_RATE = 0.01
 
@@ -33,7 +33,7 @@ def d_MSE(predictions, targets):
 class NeuralNetwork():
     def __init__(self, input_size, hidden1_size, hidden2_size, output_size):
         self.weight_input_h1 = np.random.rand(input_size, hidden1_size) - 0.5
-        self.biasq_hidden1 = np.random.rand(hidden1_size) - 0.5
+        self.bias_hidden1 = np.random.rand(hidden1_size) - 0.5
 
         self.weight_h1_h2 = np.random.rand(hidden1_size, hidden2_size) - 0.5
         self.bias_hidden2 = np.random.rand(hidden2_size) - 0.5
